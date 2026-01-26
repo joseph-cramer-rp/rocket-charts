@@ -163,8 +163,11 @@ export interface ContextMenu {
 
 export type ConnectorInteractionMode = 'click' | 'drag';
 
+export type ViewMode = 'ISOMETRIC' | '2D';
+
 export interface UiState {
   view: string;
+  viewMode: ViewMode;
   mainMenuOptions: MainMenuOptions;
   editorMode: keyof typeof EditorModeEnum;
   iconCategoriesState: IconCollectionState[];
@@ -190,6 +193,7 @@ export interface UiState {
 
 export interface UiStateActions {
   setView: (view: string) => void;
+  setViewMode: (mode: ViewMode) => void;
   setMainMenuOptions: (options: MainMenuOptions) => void;
   setEditorMode: (mode: keyof typeof EditorModeEnum) => void;
   setIconCategoriesState: (iconCategoriesState: IconCollectionState[]) => void;

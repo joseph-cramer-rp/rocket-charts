@@ -19,6 +19,7 @@ const initialState = () => {
       zoom: INITIAL_UI_STATE.zoom,
       scroll: INITIAL_UI_STATE.scroll,
       view: '',
+      viewMode: 'ISOMETRIC',
       mainMenuOptions: [],
       editorMode: 'EXPLORABLE_READONLY',
       mode: getStartingMode('EXPLORABLE_READONLY'),
@@ -45,6 +46,9 @@ const initialState = () => {
       actions: {
         setView: (view) => {
           set({ view });
+        },
+        setViewMode: (viewMode) => {
+          set({ viewMode });
         },
         setMainMenuOptions: (mainMenuOptions) => {
           set({ mainMenuOptions });

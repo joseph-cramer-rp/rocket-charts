@@ -2,10 +2,10 @@ import { useMemo } from 'react';
 import { Coords, Size, ProjectionOrientationEnum } from 'src/types';
 import {
   getBoundingBox,
-  getIsoProjectionCss,
-  getTilePosition
+  getProjectionUtils
 } from 'src/utils';
 import { UNPROJECTED_TILE_SIZE } from 'src/config';
+import { useUiStateStore } from 'src/stores/uiStateStore';
 
 interface Props {
   from: Coords;
@@ -25,6 +25,12 @@ export const useIsoProjection = ({
   gridSize: Size;
   pxSize: Size;
 } => {
+  // Get current view mode from UI store
+  const viewMode = useUiStateStore((state) => state.viewMode);
+
+  // Get projection utilities based on view mode
+  const projection = useMemo(() => getProjectionUtils(viewMode), [viewMode]);
+
   const gridSize = useMemo(() => {
     return {
       width: Math.abs(from.x - to.x) + 1,
@@ -41,13 +47,13 @@ export const useIsoProjection = ({
   }, [from, to, originOverride]);
 
   const position = useMemo(() => {
-    const pos = getTilePosition({
+    const pos = projection.getTilePosition({
       tile: origin,
       origin: orientation === 'Y' ? 'TOP' : 'LEFT'
     });
 
     return pos;
-  }, [origin, orientation]);
+  }, [origin, orientation, projection]);
 
   const pxSize = useMemo(() => {
     return {
@@ -63,7 +69,7 @@ export const useIsoProjection = ({
       top: position.y,
       width: `${pxSize.width}px`,
       height: `${pxSize.height}px`,
-      transform: getIsoProjectionCss(orientation),
+      transform: projection.getProjectionCss(orientation),
       transformOrigin: 'top left'
     },
     position,

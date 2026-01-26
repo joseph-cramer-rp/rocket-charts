@@ -3,6 +3,8 @@ export * from './SizeUtils';
 export * from './common';
 export * from './pathfinder';
 export * from './renderer';
+export * from './orthoProjection';
+export * from './projectionFactory';
 export * from './exportOptions';
 export * from './model';
 export * from './findNearestUnoccupiedTile';

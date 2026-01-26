@@ -11,7 +11,9 @@ import {
   Redo as RedoIcon,
   Help as HelpIcon,
   HighlightAltOutlined as LassoIcon,
-  GestureOutlined as FreehandLassoIcon
+  GestureOutlined as FreehandLassoIcon,
+  ViewInAr as ViewInArIcon,
+  GridView as GridViewIcon
 } from '@mui/icons-material';
 import { useUiStateStore } from 'src/stores/uiStateStore';
 import { IconButton } from 'src/components/IconButton/IconButton';
@@ -36,6 +38,9 @@ export const ToolMenu = () => {
   });
   const hotkeyProfile = useUiStateStore((state) => {
     return state.hotkeyProfile;
+  });
+  const viewMode = useUiStateStore((state) => {
+    return state.viewMode;
   });
 
   const hotkeys = HOTKEY_PROFILES[hotkeyProfile];
@@ -63,6 +68,11 @@ export const ToolMenu = () => {
       id: textBoxId
     });
   }, [uiStateStoreActions, createTextBox, mousePosition]);
+
+  const toggleViewMode = useCallback(() => {
+    const newMode = viewMode === 'ISOMETRIC' ? '2D' : 'ISOMETRIC';
+    uiStateStoreActions.setViewMode(newMode);
+  }, [viewMode, uiStateStoreActions]);
 
   return (
     <UiElement>
@@ -178,6 +188,15 @@ export const ToolMenu = () => {
           Icon={<TitleIcon />}
           onClick={createTextBoxProxy}
           isActive={mode.type === 'TEXTBOX'}
+        />
+
+        <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+
+        <IconButton
+          name={viewMode === 'ISOMETRIC' ? 'Switch to 2D View' : 'Switch to Isometric View'}
+          Icon={viewMode === 'ISOMETRIC' ? <GridViewIcon /> : <ViewInArIcon />}
+          onClick={toggleViewMode}
+          isActive={false}
         />
       </Stack>
     </UiElement>
