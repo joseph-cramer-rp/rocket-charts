@@ -247,6 +247,7 @@ interface GetMouse {
   lastMouse: Mouse;
   mouseEvent: SlimMouseEvent;
   rendererSize: Size;
+  viewMode?: 'ISOMETRIC' | '2D';
 }
 
 export const getMouse = ({
@@ -255,7 +256,8 @@ export const getMouse = ({
   scroll,
   lastMouse,
   mouseEvent,
-  rendererSize
+  rendererSize,
+  viewMode = 'ISOMETRIC'
 }: GetMouse): Mouse => {
   const componentOffset = interactiveElement.getBoundingClientRect();
   const offset: Coords = {
@@ -270,9 +272,13 @@ export const getMouse = ({
     y: clientY - offset.y
   };
 
+  // Use projection factory to get the appropriate screen-to-tile conversion
+  const { getProjectionUtils } = require('./projectionFactory');
+  const projection = getProjectionUtils(viewMode);
+
   const newPosition: Mouse['position'] = {
     screen: mousePosition,
-    tile: screenToIso({
+    tile: projection.screenToTile({
       mouse: mousePosition,
       zoom,
       scroll,

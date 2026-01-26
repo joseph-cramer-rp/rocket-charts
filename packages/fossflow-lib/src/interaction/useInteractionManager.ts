@@ -252,7 +252,8 @@ export const useInteractionManager = () => {
         scroll: uiState.scroll,
         lastMouse: uiState.mouse,
         mouseEvent: e,
-        rendererSize
+        rendererSize,
+        viewMode: uiState.viewMode
       });
 
       uiState.actions.setMouse(nextMouse);
