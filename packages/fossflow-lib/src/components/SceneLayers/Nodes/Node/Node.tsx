@@ -2,15 +2,17 @@ import React, { useMemo, memo } from 'react';
 import { Box, Typography, Stack } from '@mui/material';
 import {
   PROJECTED_TILE_SIZE,
+  UNPROJECTED_TILE_SIZE,
   DEFAULT_LABEL_HEIGHT,
   MARKDOWN_EMPTY_VALUE
 } from 'src/config';
-import { getTilePosition } from 'src/utils';
+import { getProjectionUtils } from 'src/utils';
 import { useIcon } from 'src/hooks/useIcon';
 import { ViewItem } from 'src/types';
 import { useModelItem } from 'src/hooks/useModelItem';
 import { ExpandableLabel } from 'src/components/Label/ExpandableLabel';
 import { RichTextEditor } from 'src/components/RichTextEditor/RichTextEditor';
+import { useUiStateStore } from 'src/stores/uiStateStore';
 
 interface Props {
   node: ViewItem;
@@ -20,13 +22,17 @@ interface Props {
 export const Node = memo(({ node, order }: Props) => {
   const modelItem = useModelItem(node.id);
   const { iconComponent } = useIcon(modelItem?.icon);
+  const viewMode = useUiStateStore((state) => state.viewMode);
+
+  const projection = useMemo(() => getProjectionUtils(viewMode), [viewMode]);
+  const tileSize = useMemo(() => projection.getTileSize(), [projection]);
 
   const position = useMemo(() => {
-    return getTilePosition({
+    return projection.getTilePosition({
       tile: node.tile,
       origin: 'BOTTOM'
     });
-  }, [node.tile]);
+  }, [node.tile, projection]);
 
   const description = useMemo(() => {
     if (
@@ -61,7 +67,7 @@ export const Node = memo(({ node, order }: Props) => {
         {(modelItem?.name || description) && (
           <Box
             sx={{ position: 'absolute' }}
-            style={{ bottom: PROJECTED_TILE_SIZE.height / 2 }}
+            style={{ bottom: tileSize.height / 2 }}
           >
             <ExpandableLabel
               maxWidth={250}
