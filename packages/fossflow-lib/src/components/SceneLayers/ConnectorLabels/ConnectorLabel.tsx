@@ -4,13 +4,14 @@ import { useScene } from 'src/hooks/useScene';
 import { useConnector } from 'src/hooks/useConnector';
 import {
   connectorPathTileToGlobal,
-  getTilePosition,
+  getProjectionUtils,
   getConnectorLabels,
   getLabelTileIndex
 } from 'src/utils';
-import { PROJECTED_TILE_SIZE, UNPROJECTED_TILE_SIZE } from 'src/config';
+import { UNPROJECTED_TILE_SIZE } from 'src/config';
 import { Label } from 'src/components/Label/Label';
 import { ConnectorLabel as ConnectorLabelType } from 'src/types';
+import { useUiStateStore } from 'src/stores/uiStateStore';
 
 interface Props {
   connector: ReturnType<typeof useScene>['connectors'][0];
@@ -18,6 +19,9 @@ interface Props {
 
 export const ConnectorLabel = memo(({ connector: sceneConnector }: Props) => {
   const connector = useConnector(sceneConnector.id);
+  const viewMode = useUiStateStore((state) => state.viewMode);
+  const projection = useMemo(() => getProjectionUtils(viewMode), [viewMode]);
+  const tileSize = useMemo(() => projection.getTileSize(), [projection]);
 
   const labels = useMemo(() => {
     if (!connector) return [];
@@ -39,7 +43,7 @@ export const ConnectorLabel = memo(({ connector: sceneConnector }: Props) => {
 
         if (!tile) return null;
 
-        let position = getTilePosition({
+        let position = projection.getTilePosition({
           tile: connectorPathTileToGlobal(
             tile,
             sceneConnector.path.rectangle.from
@@ -97,7 +101,7 @@ export const ConnectorLabel = memo(({ connector: sceneConnector }: Props) => {
             key={label.id}
             sx={{ position: 'absolute', pointerEvents: 'none' }}
             style={{
-              maxWidth: PROJECTED_TILE_SIZE.width,
+              maxWidth: tileSize.width,
               left: position.x,
               top: position.y
             }}
