@@ -1,8 +1,8 @@
 {
-  "name": "fossflow-monorepo",
+  "name": "rocket-charts",
   "version": "1.10.1",
   "private": true,
-  "description": "Monorepo for FossFLOW diagram editor and library",
+  "description": "Internal diagramming tool for Rocket Partners",
   "workspaces": [
     "packages/*"
   ],
