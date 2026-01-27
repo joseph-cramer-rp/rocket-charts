@@ -49,53 +49,10 @@ const initialState = () => {
           set({ view });
         },
         setViewMode: (newViewMode) => {
-          const state = get();
-          const { viewMode: oldViewMode, scroll, zoom, rendererEl } = state;
-
-          // Only adjust scroll if switching between different view modes
-          if (oldViewMode === newViewMode || !rendererEl) {
-            set({ viewMode: newViewMode });
-            return;
-          }
-
-          // Get renderer size
-          const rendererSize = {
-            width: rendererEl.clientWidth,
-            height: rendererEl.clientHeight
-          };
-
-          // Calculate the tile at the center of the current viewport using OLD projection
-          const oldProjection = getProjectionUtils(oldViewMode);
-          const centerScreen = {
-            x: rendererSize.width / 2,
-            y: rendererSize.height / 2
-          };
-
-          const centerTile = oldProjection.screenToTile({
-            mouse: centerScreen,
-            zoom,
-            scroll,
-            rendererSize
-          });
-
-          // Calculate what scroll position is needed to keep that tile centered with NEW projection
-          const newProjection = getProjectionUtils(newViewMode);
-          const centerTileScreenPos = newProjection.tileToScreen({
-            tile: centerTile,
-            rendererSize
-          });
-
-          // Calculate the scroll offset needed to center this tile
-          const newScroll = {
-            position: {
-              x: centerTileScreenPos.x - rendererSize.width / 2,
-              y: centerTileScreenPos.y - rendererSize.height / 2
-            },
-            offset: scroll.offset
-          };
-
-          // Update both viewMode and scroll atomically
-          set({ viewMode: newViewMode, scroll: newScroll });
+          // Don't adjust scroll position when switching view modes
+          // The scroll offset is in renderer-space pixels and stays consistent
+          // This avoids cumulative drift from tile coordinate round-tripping
+          set({ viewMode: newViewMode });
         },
         setMainMenuOptions: (mainMenuOptions) => {
           set({ mainMenuOptions });

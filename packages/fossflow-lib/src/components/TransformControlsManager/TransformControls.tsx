@@ -6,10 +6,11 @@ import { useIsoProjection } from 'src/hooks/useIsoProjection';
 import {
   getBoundingBox,
   outermostCornerPositions,
-  getTilePosition,
+  getProjectionUtils,
   convertBoundsToNamedAnchors
 } from 'src/utils';
 import { TransformAnchor } from './TransformAnchor';
+import { useUiStateStore } from 'src/stores/uiStateStore';
 
 interface Props {
   from: Coords;
@@ -25,6 +26,10 @@ export const TransformControls = ({ from, to, onAnchorMouseDown }: Props) => {
     to
   });
 
+  // Get projection-aware utilities for anchor positioning
+  const viewMode = useUiStateStore((state) => state.viewMode);
+  const projection = useMemo(() => getProjectionUtils(viewMode), [viewMode]);
+
   const anchors = useMemo(() => {
     if (!onAnchorMouseDown) return [];
 
@@ -32,7 +37,8 @@ export const TransformControls = ({ from, to, onAnchorMouseDown }: Props) => {
     const namedCorners = convertBoundsToNamedAnchors(corners);
     const cornerPositions = Object.entries(namedCorners).map(
       ([key, value], i) => {
-        const position = getTilePosition({
+        // Use projection-aware positioning for anchors
+        const position = projection.getTilePosition({
           tile: value,
           origin: outermostCornerPositions[i]
         });
@@ -47,7 +53,7 @@ export const TransformControls = ({ from, to, onAnchorMouseDown }: Props) => {
     );
 
     return cornerPositions;
-  }, [onAnchorMouseDown, from, to]);
+  }, [onAnchorMouseDown, from, to, projection]);
 
   return (
     <>

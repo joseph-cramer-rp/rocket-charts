@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { Box } from '@mui/material';
 import { Coords } from 'src/types';
-import { getTilePosition } from 'src/utils';
+import { getProjectionUtils } from 'src/utils';
 import { useIcon } from 'src/hooks/useIcon';
+import { useUiStateStore } from 'src/stores/uiStateStore';
 
 interface Props {
   iconId: string;
@@ -12,9 +13,13 @@ interface Props {
 export const DragAndDrop = ({ iconId, tile }: Props) => {
   const { iconComponent } = useIcon(iconId);
 
+  // Get projection-aware utilities for positioning
+  const viewMode = useUiStateStore((state) => state.viewMode);
+  const projection = useMemo(() => getProjectionUtils(viewMode), [viewMode]);
+
   const tilePosition = useMemo(() => {
-    return getTilePosition({ tile, origin: 'BOTTOM' });
-  }, [tile]);
+    return projection.getTilePosition({ tile, origin: 'BOTTOM' });
+  }, [tile, projection]);
 
   return (
     <Box
