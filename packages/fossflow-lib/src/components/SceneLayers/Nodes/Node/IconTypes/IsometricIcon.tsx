@@ -17,6 +17,12 @@ export const IsometricIcon = ({ url, scale = 1, onImageLoaded }: Props) => {
   const projection = useMemo(() => getProjectionUtils(viewMode), [viewMode]);
   const tileSize = useMemo(() => projection.getTileSize(), [projection]);
 
+  // Smart scaling: boost icon size in 2D view to maintain visual consistency
+  // Compensates for tile size reduction (141.5px -> 100px)
+  const viewModeScaleBoost = useMemo(() => {
+    return viewMode === '2D' ? 1.4 : 1.0;
+  }, [viewMode]);
+
   useEffect(() => {
     if (!ref.current) return;
 
@@ -33,7 +39,7 @@ export const IsometricIcon = ({ url, scale = 1, onImageLoaded }: Props) => {
       src={url}
       sx={{
         position: 'absolute',
-        width: tileSize.width * 0.8 * scale,
+        width: tileSize.width * 0.8 * scale * viewModeScaleBoost,
         top: -size.height,
         left: -size.width / 2,
         pointerEvents: 'none'

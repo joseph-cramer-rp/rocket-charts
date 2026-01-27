@@ -24,7 +24,7 @@ import { ConnectorRerouteTooltip } from '../ConnectorRerouteTooltip/ConnectorRer
 import { ImportHintTooltip } from '../ImportHintTooltip/ImportHintTooltip';
 import { LassoHintTooltip } from '../LassoHintTooltip/LassoHintTooltip';
 import { LazyLoadingWelcomeNotification } from '../LazyLoadingWelcomeNotification/LazyLoadingWelcomeNotification';
-import { CoordsUtils, getTilePosition } from 'src/utils';
+import { CoordsUtils, getTilePosition, getProjectionUtils } from 'src/utils';
 
 const ToolsEnum = {
   MAIN_MENU: 'MAIN_MENU',
@@ -104,7 +104,17 @@ export const UiOverlay = () => {
   const contextMenu = useUiStateStore((state) => {
     return state.contextMenu;
   });
+  const viewMode = useUiStateStore((state) => {
+    return state.viewMode;
+  });
   const { size: rendererSize } = useResizeObserver(rendererEl);
+
+  // Calculate context menu position using projection-aware utilities
+  const contextMenuPosition = useMemo(() => {
+    if (!contextMenu) return null;
+    const projection = getProjectionUtils(viewMode);
+    return projection.getTilePosition({ tile: contextMenu.tile });
+  }, [contextMenu, viewMode]);
 
   return (
     <>
@@ -266,13 +276,13 @@ export const UiOverlay = () => {
       {iconPackManager && <LazyLoadingWelcomeNotification />}
 
       <SceneLayer>
-        {contextMenu && (
-          <Box 
-            ref={contextMenuAnchorRef} 
+        {contextMenu && contextMenuPosition && (
+          <Box
+            ref={contextMenuAnchorRef}
             sx={{
               position: 'absolute',
-              left: getTilePosition({ tile: contextMenu.tile }).x,
-              top: getTilePosition({ tile: contextMenu.tile }).y
+              left: contextMenuPosition.x,
+              top: contextMenuPosition.y
             }}
           />
         )}
