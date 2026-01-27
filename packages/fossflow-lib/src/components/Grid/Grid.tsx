@@ -30,9 +30,11 @@ export const Grid = () => {
     if (viewMode === '2D') {
       // Orthographic 2D grid - simple rectangular grid
       const tileSize = UNPROJECTED_TILE_SIZE * zoom;
+      // Offset by half tile so grid lines align with tile boundaries (not centers)
+      // Since tiles are centered at their coordinates, boundaries are at ±tileSize/2
       const backgroundPosition = {
-        x: elSize.width / 2 + scroll.position.x,
-        y: elSize.height / 2 + scroll.position.y
+        x: elSize.width / 2 + scroll.position.x - tileSize / 2,
+        y: elSize.height / 2 + scroll.position.y - tileSize / 2
       };
 
       // Create a linear gradient for 2D grid lines

@@ -17,6 +17,8 @@ interface ScreenToOrtho {
 /**
  * Converts a mouse screen position to a tile position in 2D orthographic view
  * This is much simpler than isometric - just divide by tile size
+ *
+ * Note: Y is negated to match isometric coordinate semantics where positive Y goes up
  */
 export const screenToOrtho = ({
   mouse,
@@ -25,6 +27,7 @@ export const screenToOrtho = ({
   rendererSize
 }: ScreenToOrtho): Coords => {
   const tileSize = UNPROJECTED_TILE_SIZE * zoom;
+  const halfSize = tileSize / 2;
 
   // Calculate position relative to renderer center
   const projectPosition = {
@@ -33,9 +36,12 @@ export const screenToOrtho = ({
   };
 
   // In 2D orthographic view, tile calculation is straightforward
+  // Add halfSize offset because tiles are centered at their coordinates
+  // (similar to how isometric adds halfW/halfH)
+  // Negate Y to match isometric coordinate system (positive Y = up)
   const tile = {
-    x: Math.floor(projectPosition.x / tileSize),
-    y: Math.floor(projectPosition.y / tileSize)
+    x: Math.floor((projectPosition.x + halfSize) / tileSize),
+    y: -Math.floor((projectPosition.y + halfSize) / tileSize)
   };
 
   return tile;
@@ -49,6 +55,13 @@ interface GetTilePositionOrtho {
 /**
  * Converts a tile position to screen coordinates in 2D orthographic view
  * Simple multiplication by tile size
+ *
+ * In 2D view:
+ * - Tile (0, 0) is at the center of the viewport
+ * - Positive X goes right, negative X goes left
+ * - Positive Y goes up, negative Y goes down (matches isometric semantics)
+ *
+ * This differs from isometric where both X and Y affect diagonal positioning
  */
 export const getTilePositionOrtho = ({
   tile,
@@ -57,25 +70,30 @@ export const getTilePositionOrtho = ({
   const tileSize = UNPROJECTED_TILE_SIZE;
   const halfSize = tileSize / 2;
 
-  // Base position at top-left corner of tile
+  // Base position at CENTER of tile (matches isometric behavior)
+  // Negate Y to match isometric coordinate system (positive Y = up)
+  // Coordinates are relative to renderer center (0,0)
   const position: Coords = {
     x: tile.x * tileSize,
-    y: tile.y * tileSize
+    y: -(tile.y * tileSize)
   };
 
   // Adjust based on origin
+  // Note: For orthographic rendering with IsoTileArea/useIsoProjection,
+  // LEFT and TOP origins need to position the SVG at the top-left corner
+  // because there's no transform to handle the geometry like in isometric
   switch (origin) {
     case 'TOP':
-      return CoordsUtils.add(position, { x: halfSize, y: 0 });
+      return CoordsUtils.add(position, { x: -halfSize, y: -halfSize });
     case 'BOTTOM':
-      return CoordsUtils.add(position, { x: halfSize, y: tileSize });
-    case 'LEFT':
       return CoordsUtils.add(position, { x: 0, y: halfSize });
+    case 'LEFT':
+      return CoordsUtils.add(position, { x: -halfSize, y: -halfSize });
     case 'RIGHT':
-      return CoordsUtils.add(position, { x: tileSize, y: halfSize });
+      return CoordsUtils.add(position, { x: halfSize, y: 0 });
     case 'CENTER':
     default:
-      return CoordsUtils.add(position, { x: halfSize, y: halfSize });
+      return position;
   }
 };
 
