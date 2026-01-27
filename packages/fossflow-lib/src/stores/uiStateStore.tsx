@@ -4,7 +4,8 @@ import {
   CoordsUtils,
   incrementZoom,
   decrementZoom,
-  getStartingMode
+  getStartingMode,
+  getProjectionUtils
 } from 'src/utils';
 import { UiStateStore } from 'src/types';
 import { INITIAL_UI_STATE } from 'src/config';
@@ -47,8 +48,54 @@ const initialState = () => {
         setView: (view) => {
           set({ view });
         },
-        setViewMode: (viewMode) => {
-          set({ viewMode });
+        setViewMode: (newViewMode) => {
+          const state = get();
+          const { viewMode: oldViewMode, scroll, zoom, rendererEl } = state;
+
+          // Only adjust scroll if switching between different view modes
+          if (oldViewMode === newViewMode || !rendererEl) {
+            set({ viewMode: newViewMode });
+            return;
+          }
+
+          // Get renderer size
+          const rendererSize = {
+            width: rendererEl.clientWidth,
+            height: rendererEl.clientHeight
+          };
+
+          // Calculate the tile at the center of the current viewport using OLD projection
+          const oldProjection = getProjectionUtils(oldViewMode);
+          const centerScreen = {
+            x: rendererSize.width / 2,
+            y: rendererSize.height / 2
+          };
+
+          const centerTile = oldProjection.screenToTile({
+            mouse: centerScreen,
+            zoom,
+            scroll,
+            rendererSize
+          });
+
+          // Calculate what scroll position is needed to keep that tile centered with NEW projection
+          const newProjection = getProjectionUtils(newViewMode);
+          const centerTileScreenPos = newProjection.tileToScreen({
+            tile: centerTile,
+            rendererSize
+          });
+
+          // Calculate the scroll offset needed to center this tile
+          const newScroll = {
+            position: {
+              x: centerTileScreenPos.x - rendererSize.width / 2,
+              y: centerTileScreenPos.y - rendererSize.height / 2
+            },
+            offset: scroll.offset
+          };
+
+          // Update both viewMode and scroll atomically
+          set({ viewMode: newViewMode, scroll: newScroll });
         },
         setMainMenuOptions: (mainMenuOptions) => {
           set({ mainMenuOptions });
