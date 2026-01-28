@@ -7,6 +7,15 @@ import { validateModel } from './validation';
 import { iconsSchema } from './icons';
 import { colorsSchema } from './colors';
 
+// Icon override schema - allows overriding properties of pack icons
+// Currently supports url2D and scale2D, extensible for future properties
+export const iconOverrideSchema = z.object({
+  url2D: z.string().optional(),
+  scale2D: z.number().min(0.1).max(3).optional()
+});
+
+export const iconOverridesSchema = z.record(z.string(), iconOverrideSchema);
+
 export const modelSchema = z
   .object({
     version: z.string().max(10).optional(),
@@ -15,7 +24,8 @@ export const modelSchema = z
     items: modelItemsSchema,
     views: viewsSchema,
     icons: iconsSchema,
-    colors: colorsSchema
+    colors: colorsSchema,
+    iconOverrides: iconOverridesSchema.optional()
   })
   .superRefine((model, ctx) => {
     const issues = validateModel({ ...INITIAL_DATA, ...model });

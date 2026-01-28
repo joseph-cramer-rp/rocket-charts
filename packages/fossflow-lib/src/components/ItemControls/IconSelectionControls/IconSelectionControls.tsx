@@ -1,5 +1,5 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { Stack, Alert, IconButton as MUIIconButton, Box, Button, FormControlLabel, Checkbox, Typography, Slider } from '@mui/material';
+import React, { useCallback, useState } from 'react';
+import { Stack, Alert, IconButton as MUIIconButton, Box, Button } from '@mui/material';
 import { ControlsContainer } from 'src/components/ItemControls/components/ControlsContainer';
 import { useUiStateStore } from 'src/stores/uiStateStore';
 import { useModelStore } from 'src/stores/modelStore';
@@ -11,7 +11,9 @@ import { useIconCategories } from 'src/hooks/useIconCategories';
 import { Close as CloseIcon, FileUpload as FileUploadIcon } from '@mui/icons-material';
 import { Icons } from './Icons';
 import { IconGrid } from './IconGrid';
-import { generateId } from 'src/utils';
+import { ImportIconDialog } from './ImportIconDialog';
+import { IconEditDialog } from './IconEditDialog';
+import { CustomizeIconDialog } from './CustomizeIconDialog';
 
 export const IconSelectionControls = () => {
   const uiStateActions = useUiStateStore((state) => {
@@ -23,11 +25,13 @@ export const IconSelectionControls = () => {
   const iconCategoriesState = useUiStateStore((state) => state.iconCategoriesState);
   const modelActions = useModelStore((state) => state.actions);
   const currentIcons = useModelStore((state) => state.icons);
+  const iconOverrides = useModelStore((state) => state.iconOverrides || {});
   const { setFilter, filteredIcons, filter } = useIconFiltering();
   const { iconCategories } = useIconCategories();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [treatAsIsometric, setTreatAsIsometric] = useState(true);
-  const [iconScale, setIconScale] = useState(100);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [customizeDialogOpen, setCustomizeDialogOpen] = useState(false);
+  const [selectedIcon, setSelectedIcon] = useState<Icon | null>(null);
   const [showAlert, setShowAlert] = useState(() => {
     // Check localStorage to see if user has dismissed the alert
     return localStorage.getItem('fossflow-show-drag-hint') !== 'false';
@@ -48,7 +52,7 @@ export const IconSelectionControls = () => {
   );
 
   const handleImportClick = useCallback(() => {
-    fileInputRef.current?.click();
+    setImportDialogOpen(true);
   }, []);
 
   const dismissAlert = useCallback(() => {
@@ -56,123 +60,47 @@ export const IconSelectionControls = () => {
     localStorage.setItem('fossflow-show-drag-hint', 'false');
   }, []);
 
-  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
+  const handleIconImport = useCallback((newIcon: Icon) => {
+    // Add new icon to the model
+    const updatedIcons = [...currentIcons, newIcon];
+    modelActions.set({ icons: updatedIcons });
 
-    const newIcons: Icon[] = [];
-    const existingNames = new Set(currentIcons.map(icon => icon.name.toLowerCase()));
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      
-      // Check if file is an image
-      if (!file.type.startsWith('image/')) {
-        console.warn(`Skipping non-image file: ${file.name}`);
-        continue;
-      }
-
-      // Generate unique name
-      let baseName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
-      let finalName = baseName;
-      let counter = 1;
-      
-      while (existingNames.has(finalName.toLowerCase())) {
-        finalName = `${baseName}_${counter}`;
-        counter++;
-      }
-      
-      existingNames.add(finalName.toLowerCase());
-
-      // Load and scale the image
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          const originalDataUrl = e.target?.result as string;
-          
-          // For SVG files, use as-is since they scale naturally
-          if (file.type === 'image/svg+xml') {
-            resolve(originalDataUrl);
-            return;
-          }
-          
-          // For raster images, scale them to fit in a square bounding box
-          const img = new Image();
-          img.onload = () => {
-            // Create canvas for scaling
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-              resolve(originalDataUrl); // Fallback to original
-              return;
-            }
-            
-            // Use a square target size for consistent display
-            // This ensures all icons have the same bounding box
-            const TARGET_SIZE = 128; // Square size for consistency
-            
-            // Calculate scaling to fit within square while maintaining aspect ratio
-            const basScale = Math.min(TARGET_SIZE / img.width, TARGET_SIZE / img.height);
-            // Apply user's custom scaling
-            const finalScale = basScale * (iconScale / 100);
-            const scaledWidth = img.width * finalScale;
-            const scaledHeight = img.height * finalScale;
-            
-            // Set canvas to square size
-            canvas.width = TARGET_SIZE;
-            canvas.height = TARGET_SIZE;
-            
-            // Clear canvas with transparent background
-            ctx.clearRect(0, 0, TARGET_SIZE, TARGET_SIZE);
-            
-            // Calculate position to center the image in the square
-            const x = (TARGET_SIZE - scaledWidth) / 2;
-            const y = (TARGET_SIZE - scaledHeight) / 2;
-            
-            // Enable image smoothing for better quality
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'high';
-            
-            // Draw scaled and centered image
-            ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
-            
-            // Convert to data URL (using PNG for transparency)
-            resolve(canvas.toDataURL('image/png'));
-          };
-          img.onerror = () => reject(new Error('Failed to load image'));
-          img.src = originalDataUrl;
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
-      newIcons.push({
-        id: generateId(),
-        name: finalName,
-        url: dataUrl,
-        collection: 'imported',
-        isIsometric: treatAsIsometric  // Use user's preference
-      });
+    // Update icon categories to include imported collection
+    const hasImported = iconCategoriesState.some(cat => cat.id === 'imported');
+    if (!hasImported) {
+      uiStateActions.setIconCategoriesState([
+        ...iconCategoriesState,
+        { id: 'imported', isExpanded: true }
+      ]);
     }
+  }, [currentIcons, modelActions, iconCategoriesState, uiStateActions]);
 
-    if (newIcons.length > 0) {
-      // Add new icons to the model
-      const updatedIcons = [...currentIcons, ...newIcons];
-      modelActions.set({ icons: updatedIcons });
-      
-      // Update icon categories to include imported collection
-      const hasImported = iconCategoriesState.some(cat => cat.id === 'imported');
-      if (!hasImported) {
-        uiStateActions.setIconCategoriesState([
-          ...iconCategoriesState,
-          { id: 'imported', isExpanded: true }
-        ]);
-      }
+  const handleEditIcon = useCallback((icon: Icon) => {
+    setSelectedIcon(icon);
+    setEditDialogOpen(true);
+  }, []);
+
+  const handleCustomizeIcon = useCallback((icon: Icon) => {
+    setSelectedIcon(icon);
+    setCustomizeDialogOpen(true);
+  }, []);
+
+  const handleIconEdit = useCallback((iconId: string, updates: Partial<Icon>) => {
+    const updatedIcons = currentIcons.map(icon =>
+      icon.id === iconId ? { ...icon, ...updates } : icon
+    );
+    modelActions.set({ icons: updatedIcons });
+  }, [currentIcons, modelActions]);
+
+  const handleIconCustomize = useCallback((iconId: string, url2D: string | null) => {
+    if (url2D) {
+      // Set override
+      modelActions.setIconOverride(iconId, { url2D });
+    } else {
+      // Remove override
+      modelActions.removeIconOverride(iconId);
     }
-
-    // Reset input
-    event.target.value = '';
-  }, [currentIcons, modelActions, iconCategoriesState, uiStateActions, treatAsIsometric, iconScale]);
+  }, [modelActions]);
 
   return (
     <ControlsContainer
@@ -214,17 +142,29 @@ export const IconSelectionControls = () => {
     >
       {filteredIcons && (
         <Section>
-          <IconGrid icons={filteredIcons} onMouseDown={onMouseDown} />
+          <IconGrid
+            icons={filteredIcons}
+            onMouseDown={onMouseDown}
+            onEdit={handleEditIcon}
+            onCustomize={handleCustomizeIcon}
+            iconOverrides={iconOverrides}
+          />
         </Section>
       )}
       {!filteredIcons && (
-        <Icons iconCategories={iconCategories} onMouseDown={onMouseDown} />
+        <Icons
+          iconCategories={iconCategories}
+          onMouseDown={onMouseDown}
+          onEdit={handleEditIcon}
+          onCustomize={handleCustomizeIcon}
+          iconOverrides={iconOverrides}
+        />
       )}
       
       <Section>
-        <Box sx={{ 
-          border: '1px solid #e0e0e0', 
-          borderRadius: 1, 
+        <Box sx={{
+          border: '1px solid #e0e0e0',
+          borderRadius: 1,
           p: 1.5,
           backgroundColor: '#f5f5f5'
         }}>
@@ -234,40 +174,13 @@ export const IconSelectionControls = () => {
             onClick={handleImportClick}
             fullWidth
           >
-            Import Icons
+            Import Custom Icon
           </Button>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={treatAsIsometric}
-                onChange={(e) => setTreatAsIsometric(e.target.checked)}
-                size="small"
-              />
-            }
-            label={
-              <Typography variant="body2">
-                Treat as isometric (3D view)
-              </Typography>
-            }
-            sx={{ mt: 1, ml: 0 }}
-          />
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-            Uncheck for flat icons (logos, UI elements)
-          </Typography>
         </Box>
-        
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          style={{ display: 'none' }}
-          onChange={handleFileSelect}
-        />
-        
+
         {showAlert && (
-          <Alert 
-            severity="info" 
+          <Alert
+            severity="info"
             onClose={dismissAlert}
             sx={{ cursor: 'pointer', mt: 1 }}
           >
@@ -275,6 +188,38 @@ export const IconSelectionControls = () => {
           </Alert>
         )}
       </Section>
+
+      {/* Import Icon Dialog */}
+      <ImportIconDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        onImport={handleIconImport}
+        existingIconNames={currentIcons.map(icon => icon.name)}
+      />
+
+      {/* Edit Icon Dialog */}
+      <IconEditDialog
+        open={editDialogOpen}
+        icon={selectedIcon}
+        onClose={() => {
+          setEditDialogOpen(false);
+          setSelectedIcon(null);
+        }}
+        onSave={handleIconEdit}
+        existingIconNames={currentIcons.map(icon => icon.name)}
+      />
+
+      {/* Customize Icon Dialog */}
+      <CustomizeIconDialog
+        open={customizeDialogOpen}
+        icon={selectedIcon}
+        currentUrl2D={selectedIcon ? iconOverrides[selectedIcon.id]?.url2D || null : null}
+        onClose={() => {
+          setCustomizeDialogOpen(false);
+          setSelectedIcon(null);
+        }}
+        onSave={handleIconCustomize}
+      />
     </ControlsContainer>
   );
 };

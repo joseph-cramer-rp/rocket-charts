@@ -21,6 +21,8 @@ export interface ModelStoreWithHistory extends Omit<ModelStore, 'actions'> {
     canRedo: () => boolean;
     saveToHistory: () => void;
     clearHistory: () => void;
+    setIconOverride: (iconId: string, override: { url2D?: string; scale2D?: number }) => void;
+    removeIconOverride: (iconId: string) => void;
   };
 }
 
@@ -43,7 +45,8 @@ const extractModelData = (state: ModelStoreWithHistory): Model => {
     colors: state.colors,
     icons: state.icons,
     items: state.items,
-    views: state.views
+    views: state.views,
+    iconOverrides: state.iconOverrides
   };
 };
 
@@ -154,7 +157,30 @@ const initialState = () => {
         canUndo,
         canRedo,
         saveToHistory,
-        clearHistory
+        clearHistory,
+        setIconOverride: (iconId: string, override: { url2D?: string }) => {
+          saveToHistory();
+          set((state) => ({
+            ...state,
+            iconOverrides: {
+              ...state.iconOverrides,
+              [iconId]: {
+                ...(state.iconOverrides?.[iconId] || {}),
+                ...override
+              }
+            }
+          }));
+        },
+        removeIconOverride: (iconId: string) => {
+          saveToHistory();
+          set((state) => {
+            const { [iconId]: removed, ...rest } = state.iconOverrides || {};
+            return {
+              ...state,
+              iconOverrides: rest
+            };
+          });
+        }
       }
     };
   });
