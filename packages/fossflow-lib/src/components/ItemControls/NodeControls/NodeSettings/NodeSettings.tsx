@@ -4,6 +4,7 @@ import { ModelItem, ViewItem } from 'src/types';
 import { RichTextEditor } from 'src/components/RichTextEditor/RichTextEditor';
 import { useModelItem } from 'src/hooks/useModelItem';
 import { useModelStore } from 'src/stores/modelStore';
+import { useUiStateStore } from 'src/stores/uiStateStore';
 import { DeleteButton } from '../../components/DeleteButton';
 import { Section } from '../../components/Section';
 
@@ -28,32 +29,48 @@ export const NodeSettings = ({
   const modelItem = useModelItem(node.id);
   const modelActions = useModelStore((state) => state.actions);
   const icons = useModelStore((state) => state.icons);
-  
+  const viewMode = useUiStateStore((state) => state.viewMode);
+
   // Local state for smooth slider interaction
   const currentIcon = icons.find(icon => icon.id === modelItem?.icon);
-  const [localScale, setLocalScale] = useState(currentIcon?.scale || 1);
+
+  // Get the appropriate scale based on current view mode
+  const currentScale = viewMode === '2D' && currentIcon?.scale2D !== undefined
+    ? currentIcon.scale2D
+    : (currentIcon?.scale || 1);
+
+  const [localScale, setLocalScale] = useState(currentScale);
   const debounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
-  // Update local scale when icon changes
+  // Update local scale when icon or view mode changes
   useEffect(() => {
-    setLocalScale(currentIcon?.scale || 1);
-  }, [currentIcon?.scale]);
+    const newScale = viewMode === '2D' && currentIcon?.scale2D !== undefined
+      ? currentIcon.scale2D
+      : (currentIcon?.scale || 1);
+    setLocalScale(newScale);
+  }, [currentIcon?.scale, currentIcon?.scale2D, viewMode]);
 
-  // Debounced update to store
+  // Debounced update to store - updates the appropriate scale field based on view mode
   const updateIconScale = useCallback((scale: number) => {
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
-    
+
     debounceRef.current = setTimeout(() => {
-      const updatedIcons = icons.map(icon => 
-        icon.id === modelItem?.icon 
-          ? { ...icon, scale }
-          : icon
-      );
+      const updatedIcons = icons.map(icon => {
+        if (icon.id === modelItem?.icon) {
+          // Update the appropriate scale field based on current view mode
+          if (viewMode === '2D') {
+            return { ...icon, scale2D: scale };
+          } else {
+            return { ...icon, scale };
+          }
+        }
+        return icon;
+      });
       modelActions.set({ icons: updatedIcons });
     }, 100); // 100ms debounce
-  }, [icons, modelItem?.icon, modelActions]);
+  }, [icons, modelItem?.icon, modelActions, viewMode]);
 
   // Handle slider change with local state + debounced store update
   const handleScaleChange = useCallback((e: Event, newScale: number | number[]) => {
@@ -111,7 +128,7 @@ export const NodeSettings = ({
         </Section>
       )}
 
-      <Section title="Icon size">
+      <Section title={`Icon size (${viewMode === '2D' ? '2D view' : 'Isometric view'})`}>
         <Slider
           marks
           step={0.1}
